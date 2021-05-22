@@ -110,7 +110,7 @@ class MCTS_node:
             tmp.wins += self.wins
             tmp = tmp.parent
             
-    def funckija(self):
+    def simulate(self):
         # number of playouts, fit for change
         no_playouts = 20
         
@@ -121,44 +121,116 @@ class MCTS_node:
             self.wins += a
             # visits gets incremented regardless of wheter or not the simulation resulted in a win
             self.visits += 1
-    
+            
+    # todo not entirely done
     def print_tree(self, n = 1):        
         for node in self.children:
-            print(f"visits: {node.visits}, pobede: {node.wins}, nivo: {n}, uct: {self.UCT(node)}")
-    
-root = MCTS_node(chess.Board(), None)
+            print(f"visits: {node.visits}, wins: {node.wins}, node level: {n}, uct: {self.UCT(node)}")
+            print_tree(node, n + 1)
 
-for _ in range(5):
-    start_time = time.time()
-    tmp = root
-    while(time.time() - start_time < 1):
-        while(len(tmp.children) != 0):
-            tmp = tmp.selection()
-        if(tmp.visits == 0):
-            tmp.funckija()
-            tmp.back_propagation()
-        else:
-            tmp.expansion()
+
+def play():
+    root = MCTS_node(chess.Board(), None)
+
+    no_moves = 5
+
+    for _ in range(no_moves):
+        start_time = time.time()
+        time_for_move = 1
+        
         tmp = root
         
-    izabran = root.selection()
-    print(str(_))
-    print(izabran.board)
-    print("\n")
-    result = engine.play(izabran.board, chess.engine.Limit(depth=1))
-    izabran.board.push(result.move)
-    
-    #todo ako nema dece uraditi mu ekspanziju
-    
-    for node in izabran.children:
-        if node.board == izabran.board:
-            izabran == node
-            break
-    
-    print(izabran.board)
-    print("\n")
-    
-    
-    root = izabran
+        while(time.time() - start_time < time_for_move):
+            
+            while(len(tmp.children) != 0):
+                tmp = tmp.selection()
+                
+            if(tmp.visits == 0):
+                tmp.simulate()
+                tmp.back_propagation()
+            else:
+                tmp.expansion()
+                
+            tmp = root
+            
+        chosen = root.selection()
+        print(str(f"move number: {_}\n"))
+        print(chosen.board)
+        print("\n")
+        result = engine.play(chosen.board, chess.engine.Limit(depth=1))
+        chosen.board.push(result.move)
+        
+        
+        #todo ako nema dece uraditi mu ekspanziju
+        
+        # here we can't play on the same board that is found in the chosen node
+        # we have to find a child node that has the same exact board layout as the chosen board + the move black is about to make
+        for node in chosen.children:
+            if node.board == chosen.board:
+                chosen == node
+                break
+        
+        print(chosen.board)
+        print("\n")        
+        
+        root = chosen
     
 #root.print_tree()
+
+# parameters fit for change
+
+# inside simulation 
+# playout_depth = 20
+# loss_value = 0
+# not_enough_playouts_value = 0
+# win_value = 1
+
+# np.random.random_sample()
+# np.random.random()
+# random.random()
+
+# inside simulate
+# no_playouts = 20
+
+# inside play
+# no_moves = 5
+# time_for_move = 1
+# stockfish depth = 1
+
+def play10x():
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
