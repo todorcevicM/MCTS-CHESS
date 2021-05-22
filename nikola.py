@@ -8,20 +8,14 @@ Created on Fri May 21 21:08:34 2021
 import chess
 import numpy as np
 import time 
+import random
 
 import chess.engine
 import chess.svg
 import stockfish
 engine = chess.engine.SimpleEngine.popen_uci("stockfish_20011801_x64.exe")
         
-# =============================================================================
-# def UCT(node):
-#     if node.visits == 0:
-#         return np.Inf
-#         
-#     return node.wins / node.visits + (2 * np.log(node.parent.visits) / node.visits) ** (1 / 2)
-# =============================================================================
-
+    
 class MCTS_node:
     
     def __init__(self, board, parent):
@@ -37,13 +31,13 @@ class MCTS_node:
         if node.visits == 0:
             return np.Inf
         
-        return node.wins / node.visits + (2 * np.log(node.parent.visits) / node.visits) ** (1 / 2)
+        return node.wins / node.visits + (0.01 * np.log(node.parent.visits) / node.visits) ** (1 / 2)
     
         
     # returns the child whose UCT value is the highest of all the other children
     # if there are multiple child nodes with the same value then the node that was found first will be returned
     # maybe fix this and return one random from all the ones with the max value
-    def selection(self):
+    def selection(self):        
         max_child = self.children[0]
         
         for child in self.children:
@@ -55,48 +49,59 @@ class MCTS_node:
         return max_child
     
     
-    # plays the game out by chosing random moves from the board which was provided as an argument
-    def simulation(self):
-        tmp_board = chess.copy.copy(self.board)
+    def simulation(node):
+        tmp_board = chess.copy.copy(node.board)
         
-        # depth of the simulation, the function will stop at this depth if there is no resolution to the game
-        playout_depth = 20
+        # playout_ammount = 5
         
-        # in case the simulated player looses (always white) the return will be 0, it can also be set to -1 and then it will act as a punishment and the player would be less likely to choose this course of action, but it does not matter if it is set to 0, for testing
-        loss_value = 0
-        # if the game doesn't end within the playout_depth moves, special value is returned
-        # right now that special value is the same as the loss value, 0, this can also be tweaked but it doesn't have to be
+        loss_value = -1
         not_enough_playouts_value = 0
-        # if the player wins in this playout, this value is returned
         win_value = 1
         
-        # simulate moves until the maximum depth has been reached
-        while (playout_depth):
-            playout_depth -= 1
-            
-            # this is where our special end game condition comes in
-            # it is set to check if a king is under check status, and this is so our computer can actually play a reasonable ammount of games that are enough for us to make any kind of assesment neccessary for the "papper"
-            # if we wanted to play the game out until the very end, this is where we would change the main game mechanic/ main game condition
-            # in essence a player has lost a game if he has been undre the status CHECK
-            if (tmp_board.is_check()):
-                break
-            
-            legal_moves = list(tmp_board.generate_legal_moves())
-            random_move = (int) (np.random.random_sample() * len(legal_moves))
-            move_to_be_made = legal_moves[random_move]
-            tmp_board.push(move_to_be_made)
-            
+        while (not tmp_board.is_game_over()) and (not tmp_board.is_insufficient_material()):
+            result = engine.play(tmp_board, chess.engine.Limit(depth = 6))
+            #print(result) + "\n\n\n")
+            tmp_board.push(result.move)
+            #print(tmp_board)
         
-        # the game has not concluded within the given depth, and so the player hasn't won
-        if (playout_depth == 0):
-            return not_enough_playouts_value
+        #print(tmp_board)
+        if (tmp_board.outcome() == None):
+           # print(tmp_board.outcome())
+            return 0
         
-        # as the player the program plays is white, if in the while loop happens a break, that means there was a check
-        # if the player whose turn it is is black then that means that the white player played the move that lead to the check and so white has won
-        if (tmp_board.turn == chess.BLACK):
-            return win_value
+        if (tmp_board.outcome().winner == True):
+            # print("aaaaaa")
+            return 1
+        elif (tmp_board.outcome().winner == False):
+            # print("bbbbbbb")
+            return -1
+        # print("vvvvvvvvv")
+        return 0
         
-        return loss_value
+    
+# =============================================================================
+#         while (playout_ammount):
+#             playout_ammount -= 1
+#             if (tmp_board.is_check()):
+#                 break
+#             
+#             legal_moves = list(tmp_board.generate_legal_moves())
+#             if (len(legal_moves) == 0):
+#                 return loss_value
+#             
+#             random_move = (int) (np.random.random_sample() * (len(legal_moves) - 1))
+#             move_to_be_made = legal_moves[random_move]
+#             tmp_board.push(move_to_be_made)
+#             
+#         if (playout_ammount == 0):
+#             return not_enough_playouts_value
+#         if (tmp_board.turn == chess.BLACK):
+#             return win_value
+#         
+#         return loss_value
+# =============================================================================
+        
+        
     
     
     # expansion is done by generating all legal moves and then appending them to the tree
@@ -112,17 +117,6 @@ class MCTS_node:
     
     # updates all the node that are on the path from the current node, up until it reaches the root node
     def back_propagation(self):
-        # # number of playouts, fit for change
-        # no_playouts = 20
-        
-        # for _ in range(no_playouts):
-        #     # do a simulation from the current board state, sum the returned value to the 
-        #     a = self.simulation()
-        #     # a is so far, either 0 or 1
-        #     self.wins += a
-        #     # visits gets incremented regardless of wheter or not the simulation resulted in a win
-        #     self.visits += 1
-        
         # used to iterate over parents
         tmp = self.parent
         
@@ -133,7 +127,7 @@ class MCTS_node:
             
     def simulate_batch(self):
         # number of playouts, fit for change
-        no_playouts = 20
+        no_playouts = 5
         
         for _ in range(no_playouts):
             # do a simulation from the current board state, sum the returned value to the 
@@ -143,43 +137,55 @@ class MCTS_node:
             # visits gets incremented regardless of wheter or not the simulation resulted in a win
             self.visits += 1
             
+    @staticmethod
     # todo not entirely done
     def print_tree(self, n = 1):        
         for node in self.children:
+            #print(node.board)
             print(f"visits: {node.visits}, wins: {node.wins}, node level: {n}, uct: {self.UCT(node)}")
-            self.print_tree(node, n + 1)
+            #self.print_tree(node, n + 1)
 
 
 def play(num_moves = 20, time_for_move = 3, stockfish_depth = 3):
     root = MCTS_node(chess.Board(), None)
 
-    num_moves = 5
+    #num_moves = 5
     count_moves = num_moves
     while ((num_moves) and ~(root.board.is_checkmate())):
+        num_moves -= 1        
+        
+        tmp = root        
+        
+        
         start_time = time.time()
-        
-        tmp = root
-        
         while (time.time() - start_time < time_for_move):
-            
             while (len(tmp.children) != 0):
                 tmp = tmp.selection()
-                
-            if (tmp.visits == 0):
+                # print("tablaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+                # print(tmp.board)
+            if(tmp.visits == 0):
                 tmp.simulate_batch()
                 tmp.back_propagation()
             else:
                 tmp.expansion()
-                
             tmp = root
-            
+
+        root.print_tree(root)
+        
+        if(root.board.is_checkmate()):
+            break
+        if (len(root.children) == 0):
+            print("AAAA")
+            root.expansion()
+        
         chosen = root.selection()
+            
         print(str(f"move number: {count_moves - num_moves}\n"))
+        #print("selection 22222222222222222222222")
         print(chosen.board)
         print("\n")
         
-        if (chosen.board.is_checkmate()):
-            break
+       
         
         if (len(chosen.children) == 0):
             chosen.expansion()
@@ -195,15 +201,59 @@ def play(num_moves = 20, time_for_move = 3, stockfish_depth = 3):
                 chosen = node
                 break
         
-        chosen.parent = None
         print(chosen.board)
         print("\n")        
         
+        chosen.parent = None
         root = chosen
-        
-        num_moves -= 1        
+             
+
+    return root.board   
     
-#root.print_tree()
+
+# play(100, 3, 1)
+
+def play10x():
+    n, b, c = 0, 0, 0
+    for _ in range(3):
+        board = play(100, 5, 1)
+        
+        tmp = board.outcome()
+        if(tmp == None):
+            n += 1
+        elif(tmp == True):
+            b += 1
+        elif(tmp == False):
+            c += 1
+    print(f"beli: {b}\ncrni: {c}\nnereseno: {n}")
+            
+
+
+play10x()
+
+# play(100, 3, 1)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # parameters fit for change
 
@@ -225,41 +275,4 @@ def play(num_moves = 20, time_for_move = 3, stockfish_depth = 3):
 # time_for_move = 1
 # stockfish depth = 1
 
-def play10x():
-    pass
-    
-    
-play()
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+#move, time, depth
