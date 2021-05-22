@@ -22,7 +22,7 @@ class MCTS_node:
     @staticmethod
     def UCT(node):
         if node.visits == 0:
-            return np.Inf
+            return 1
         
         return node.wins / node.visits + (0.01 * np.log(node.parent.visits) / node.visits) ** (1 / 2)
     
@@ -36,7 +36,7 @@ class MCTS_node:
         for child in self.children:
             childUCT = self.UCT(node = child)
             maxchildUCT = self.UCT(node = max_child)
-            if(childUCT > maxchildUCT):
+            if (childUCT > maxchildUCT):
                 max_child = child
                 
         return max_child
@@ -48,25 +48,28 @@ class MCTS_node:
         not_enough_playouts_value = 0
         win_value = 1
         
-        while (not tmp_board.is_game_over()) and (not tmp_board.is_insufficient_material()):
+        while (not tmp_board.is_check()) and (not tmp_board.is_insufficient_material()):
+        # while (not tmp_board.is_game_over()) and (not tmp_board.is_insufficient_material()):
             result = engine.play(tmp_board, chess.engine.Limit(depth = 1))
-            #print(result) + "\n\n\n")
             tmp_board.push(result.move)
-            #print(tmp_board)
         
-        #print(tmp_board)
         if (tmp_board.outcome() == None):
-           # print(tmp_board.outcome())
             return 0
         
-        if (tmp_board.outcome().winner == True):
-            # print("aaaaaa")
-            return 1
-        elif (tmp_board.outcome().winner == False):
-            # print("bbbbbbb")
-            return -1
-        # print("vvvvvvvvv")
-        return 0
+        # if its whites turn to move then he was checked by black and has lost
+        if (tmp_board.turn == chess.WHITE):
+            return loss_value
+        elif (tmp_board.turn == chess.BLACK):
+            return win_value
+        return not_enough_playouts_value
+        
+# =============================================================================
+#         if (tmp_board.outcome().winner == True):
+#             return 1
+#         elif (tmp_board.outcome().winner == False):
+#             return -1
+#         return 0
+# =============================================================================
     
     
     # expansion is done by generating all legal moves and then appending them to the tree
@@ -112,7 +115,7 @@ class MCTS_node:
 
 
 def play(num_moves = 20, time_for_move = 3, stockfish_depth = 3):
-    root = MCTS_node(chess.Board(), None)
+    root = MCTS_node(chess.Board('r1b1kb1r/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'), None)
 
     #num_moves = 5
     count_moves = num_moves
@@ -177,20 +180,31 @@ def play(num_moves = 20, time_for_move = 3, stockfish_depth = 3):
 # play(100, 3, 1)
 
 def play10x():
-    n, b, c = 0, 0, 0
-    for _ in range(3):
-        board = play(1, 10, 1)
+    play_seconds = 20
+    play_seconds_increment = 5
+    number_of_games = 10
+    number_of_moves_per_game = 100
+    stockfish_depth = 1
+    
+    
+    d, w, b = 0, 0, 0
+    for _ in range(number_of_games):
+        board = play(number_of_moves_per_game, play_seconds, stockfish_depth)
+        #play_seconds += play_seconds_increment
         
         tmp = board.outcome()
+        tmp = board.turn
+        
         if(tmp == None):
-            n += 1
+            d += 1
         elif(tmp == True):
-            b += 1
+            w += 1
         elif(tmp == False):
-            c += 1
-    print(f"beli: {b}\ncrni: {c}\nnereseno: {n}")
+            b += 1
+            
+    print(f"beli: {w}\ncrni: {b}\nnereseno: {d}")
             
 
-play(100,15,1)
+# play(100,20,1)
 
-#play10x()
+play10x()
