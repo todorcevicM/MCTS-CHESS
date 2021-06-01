@@ -1,5 +1,12 @@
 # -*- coding: utf-8 -*-
 """
+Created on Sat May 22 16:33:30 2021
+
+@author: Nikola
+"""
+
+# -*- coding: utf-8 -*-
+"""
 Created on Fri May 21 21:08:34 2021
 
 @author: Nikola
@@ -50,33 +57,20 @@ class MCTS_node:
     
     
     def simulation(node):
-        tmp_board = chess.copy.copy(node.board)
-        
-        playout_ammount = 5
-        
-        loss_value = -1
-        not_enough_playouts_value = 0
-        win_value = 1
-        
-        while (playout_ammount):
-            playout_ammount -= 1
-            if (tmp_board.is_check()):
+        new_tmp_board = chess.copy.copy(node.board)
+        n = 1;
+        while(n):
+            n -= 1
+            if(new_tmp_board.is_check()):
                 break
-            
-            legal_moves = list(tmp_board.generate_legal_moves())
-            if (len(legal_moves) == 0):
-                return loss_value
-            
-            random_move = (int) (np.random.random_sample() * (len(legal_moves) - 1))
-            move_to_be_made = legal_moves[random_move]
-            tmp_board.push(move_to_be_made)
-            
-        if (playout_ammount == 0):
-            return not_enough_playouts_value
-        if (tmp_board.turn == chess.BLACK):
-            return win_value
+            legal = list(new_tmp_board.generate_legal_moves())
+            new_tmp_board.push((legal[(int)(np.random.random_sample()*(len(legal)-1))]))
         
-        return loss_value
+        if(n == 0):
+            return 0
+        if(new_tmp_board.turn == chess.BLACK):
+            return 1
+        return 0
     
     
     # expansion is done by generating all legal moves and then appending them to the tree
@@ -102,7 +96,7 @@ class MCTS_node:
             
     def simulate_batch(self):
         # number of playouts, fit for change
-        no_playouts = 20
+        no_playouts = 5
         
         for _ in range(no_playouts):
             # do a simulation from the current board state, sum the returned value to the 
@@ -116,78 +110,45 @@ class MCTS_node:
     # todo not entirely done
     def print_tree(self, n = 1):        
         for node in self.children:
+            print(node.board)
             print(f"visits: {node.visits}, wins: {node.wins}, node level: {n}, uct: {self.UCT(node)}")
             #self.print_tree(node, n + 1)
 
 
-def play(num_moves = 20, time_for_move = 3, stockfish_depth = 3):
+def play(num_moves = 20, time_for_move = 3):
     root = MCTS_node(chess.Board(), None)
 
     #num_moves = 5
-    count_moves = num_moves
     while ((num_moves) and ~(root.board.is_checkmate())):
         num_moves -= 1        
-        
+        root.parent = None
         tmp = root        
-        
         
         start_time = time.time()
         while (time.time() - start_time < time_for_move):
             while (len(tmp.children) != 0):
                 tmp = tmp.selection()
+                # print(tmp.board)
             if(tmp.visits == 0):
                 tmp.simulate_batch()
                 tmp.back_propagation()
             else:
                 tmp.expansion()
             tmp = root
-
-        root.print_tree(root)
         
-        if(root.board.is_checkmate()):
-            break
-        if (len(root.children) == 0):
-            print("AAAA")
-            root.expansion()
-
-        chosen = root.selection()
-            
-        print(str(f"move number: {count_moves - num_moves}\n"))
-        print(chosen.board)
-        print("\n")
-        
-       
-        
-        if (len(chosen.children) == 0):
-            chosen.expansion()
-
-        # stockfish' turn
-        result = engine.play(chosen.board, chess.engine.Limit(depth = stockfish_depth))
-        chosen.board.push(result.move)        
-        
-        # here we can't play on the same board that is found in the chosen node
-        # we have to find a child node that has the same exact board layout as the chosen board + the move black is about to make
-        for node in chosen.children:
-            if node.board == chosen.board:
-                chosen = node
-                break
-        
-        print(chosen.board)
-        print("\n")        
-        
-        chosen.parent = None
-        root = chosen
-             
+        root = root.selection()
+        print(root.board);
 
     return root.board   
     
 
+play(10,1)
 # play(100, 3, 1)
 
 def play10x():
     n, b, c = 0, 0, 0
     for _ in range(3):
-        board = play(100, 5, 1)
+        board = play(1, 5)
         
         tmp = board.outcome()
         if(tmp == None):
@@ -200,49 +161,4 @@ def play10x():
             
 
 
-play10x()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# parameters fit for change
-
-# inside simulation 
-# playout_depth = 20
-# loss_value = 0
-# not_enough_playouts_value = 0
-# win_value = 1
-
-# np.random.random_sample()
-# np.random.random()
-# random.random()
-
-# inside simulate_batch
-# no_playouts = 20
-
-# inside play
-# no_moves = 5
-# time_for_move = 1
-# stockfish depth = 1
-
-#move, time, depth
+#play10x()

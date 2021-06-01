@@ -1,0 +1,12 @@
+Za izradu projekta MCST-Chess kao dodatna biblioteka korišćena je
+chess biblioteka, link: https://python-chess.readthedocs.io/en/latest/
+moguće ju je instalirati pomoću pip paket instalera sledećom komandom:
+
+pip install chess
+
+u Anaconda okruženju instalacija je moguća kroz anaconda-promt komandom:
+
+conda install -c pettingzoo python-chess
+
+Od biblioteka je korišćena još i ugrađena biblioteka time, 
+Kao i numpy često korišćena biblioteka.

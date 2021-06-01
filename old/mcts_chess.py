@@ -106,6 +106,8 @@ def game():
     
     return n
 
+game()
+
 
 def play10():
     for _ in range(10):
@@ -139,10 +141,7 @@ def game1010():
 
 #play10()
 
-game10()
 
-
-game1010()
 
 
 
